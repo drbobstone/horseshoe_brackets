@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Horseshoes Bracket Generator</title>
+  <style>
+    body { font-family: sans-serif; }
+    #container { display: block; }
+    #input { margin-bottom: 20px; }
+    #bracket-output {
+        position: relative;
+        margin-top: 20px;
+    }
+    .round {
+        float: left;
+        margin-right: 40px;
+    }
+    .match {
+        margin-bottom: 40px;
+        position: relative;
+    }
+    .team {
+        display: block;
+        padding: 5px;
+        border: 1px solid #ccc;
+        background-color: #f5f5f5;
+        width: 150px;
+    }
+    .match-connector {
+        position: absolute;
+        width: 20px;
+        height: 2px;
+        background-color: #ccc;
+        top: 50%;
+        left: 100%;
+    }
+    .round-connector {
+        position: absolute;
+        width: 2px;
+        background-color: #ccc;
+        left: 170px; /* .team width + .match-connector width */
+    }
+  </style>
+</head>
+<body>
+  <h1>Horseshoes Bracket Generator</h1>
+  <div id="container">
+    <div id="input">
+      <h2>Participants</h2>
+      <textarea id="participants" rows="10" cols="30"></textarea>
+      <br>
+      <button onclick="randomize()">Randomize</button>
+    </div>
+    <div id="output">
+      <h2>Teams</h2>
+      <ul id="teams"></ul>
+    </div>
+    <div id="bracket-output">
+      <h2>Bracket</h2>
+      <div id="bracket"></div>
+    </div>
+  </div>
+
+  <script>
+    async function randomize() {
+      const participants = document.getElementById('participants').value.split('\n').filter(p => p.trim() !== '');
+      const response = await fetch('/randomize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participants })
+      });
+      const data = await response.json();
+      displayResults(data);
+    }
+
+    function displayResults(data) {
+      const teamsList = document.getElementById('teams');
+      teamsList.innerHTML = '';
+      data.teams.forEach(team => {
+        const li = document.createElement('li');
+        li.textContent = team.join(' and ');
+        teamsList.appendChild(li);
+      });
+
+      const bracketDiv = document.getElementById('bracket');
+      bracketDiv.innerHTML = '';
+
+      const winnersDiv = document.createElement('div');
+      winnersDiv.innerHTML = '<h3>Winners Bracket</h3>';
+      let previousRound = null;
+      data.bracket.winners_bracket.forEach((round, i) => {
+        const roundDiv = document.createElement('div');
+        roundDiv.classList.add('round');
+        roundDiv.innerHTML = `<h4>Round ${i + 1}</h4>`;
+        round.forEach((match, j) => {
+          const matchDiv = document.createElement('div');
+          matchDiv.classList.add('match');
+          
+          const matchId = document.createElement('div');
+          matchId.textContent = `Match ${match.id}`;
+          matchDiv.appendChild(matchId);
+
+          const team1 = document.createElement('span');
+          team1.classList.add('team');
+          team1.textContent = Array.isArray(match.teams[0]) ? match.teams[0].join(' and ') : match.teams[0];
+          matchDiv.appendChild(team1);
+
+          const team2 = document.createElement('span');
+          team2.classList.add('team');
+          if (match.teams[1] === 'BYE') {
+            team2.textContent = 'BYE';
+          } else {
+            team2.textContent = Array.isArray(match.teams[1]) ? match.teams[1].join(' and ') : match.teams[1];
+          }
+          matchDiv.appendChild(team2);
+
+          roundDiv.appendChild(matchDiv);
+        });
+        winnersDiv.appendChild(roundDiv);
+      });
+      bracketDiv.appendChild(winnersDiv);
+
+      const losersDiv = document.createElement('div');
+      losersDiv.innerHTML = '<h3>Losers Bracket</h3>';
+      data.bracket.losers_bracket.forEach((round, i) => {
+        const roundDiv = document.createElement('div');
+        roundDiv.classList.add('round');
+        roundDiv.innerHTML = `<h4>Round ${i + 1}</h4>`;
+        if (round.length === 0) {
+            const placeholder = document.createElement('div');
+            placeholder.classList.add('match');
+            placeholder.textContent = 'TBD';
+            roundDiv.appendChild(placeholder);
+        } else {
+            round.forEach(match => {
+                const matchDiv = document.createElement('div');
+                matchDiv.classList.add('match');
+                
+                const matchId = document.createElement('div');
+                matchId.textContent = `Match ${match.id}`;
+                matchDiv.appendChild(matchId);
+
+                const team1 = document.createElement('span');
+                team1.classList.add('team');
+                team1.textContent = match.teams[0] || 'TBD';
+                matchDiv.appendChild(team1);
+
+                const team2 = document.createElement('span');
+                team2.classList.add('team');
+                team2.textContent = match.teams[1] || 'TBD';
+                matchDiv.appendChild(team2);
+
+                roundDiv.appendChild(matchDiv);
+            });
+        }
+        losersDiv.appendChild(roundDiv);
+      });
+      bracketDiv.appendChild(losersDiv);
+    }
+  </script>
+</body>
+</html>
